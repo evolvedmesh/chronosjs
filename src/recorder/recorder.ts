@@ -43,6 +43,13 @@ export interface RecorderOptions {
   persist?: boolean;
   /** Last chance to change or drop (return null) a replay before it is sent. */
   beforeSend?: (replay: Replay) => Replay | null;
+  /**
+   * Pages that must never be recorded (sealed or secret information). Checked
+   * on load and on every navigation; while it returns true nothing is
+   * recorded, and the history before it is discarded, so no replay can hold
+   * what was on that page. Gets `location.pathname`.
+   */
+  pauseOn?: (path: string) => boolean;
   /** Called after a replay was handed to the transports. */
   onReplay?: (replay: Replay, bytes: number) => void;
 }
@@ -68,6 +75,9 @@ export class ChronosRecorder {
   private lastScroll = new WeakMap<EventTarget, number>();
   private resizeTimer?: ReturnType<typeof setTimeout>;
   private lastPath = "";
+  /** Why recording is paused: by the app (`pause()`), or by `pauseOn` for the page shown. */
+  private paused?: "app" | "page";
+  private resumeTimer?: ReturnType<typeof setTimeout>;
   /** Where the mouse last rested, and the timer that notices it resting again. */
   private pointer?: { x: number; y: number; moving: boolean; timer?: ReturnType<typeof setTimeout> };
   private readonly bufferMs: number;
@@ -89,15 +99,64 @@ export class ChronosRecorder {
     if (this.running || typeof document === "undefined") return;
     this.running = true;
     this.restore();
-    this.snapshot();
+    if (this.options.pauseOn?.(location.pathname)) this.pause("page");
+    else this.snapshot();
     this.observer = new MutationObserver((records) => this.onMutations(records));
     this.observer.observe(document, { childList: true, subtree: true, attributes: true, characterData: true });
     this.listen();
     this.patch();
   }
 
+  /**
+   * Stop recording and discard everything recorded so far (nothing from
+   * before is ever sent). `resume()` starts again from a fresh snapshot.
+   */
+  pause(by: "app" | "page" = "app"): void {
+    clearTimeout(this.resumeTimer);
+    this.resumeTimer = undefined;
+    if (this.paused) {
+      if (by === "app") this.paused = "app";
+      return;
+    }
+    this.paused = by;
+    this.observer?.takeRecords();
+    this.events = [];
+    this.checkpoints = [];
+    if (this.pending) clearTimeout(this.pending.timer);
+    this.pending = undefined;
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Storage blocked: there is nothing in it either.
+    }
+  }
+
+  /**
+   * Record again, from a fresh snapshot taken after `delayMs` (give a page
+   * that is still being replaced time to render, so the snapshot never holds
+   * what was paused).
+   */
+  resume(delayMs = 0): void {
+    if (!this.paused || !this.running) return;
+    clearTimeout(this.resumeTimer);
+    const go = () => {
+      this.resumeTimer = undefined;
+      if (!this.paused || this.options.pauseOn?.(location.pathname)) return;
+      this.paused = undefined;
+      this.observer?.takeRecords();
+      this.snapshot();
+    };
+    if (delayMs > 0) this.resumeTimer = setTimeout(go, delayMs);
+    else go();
+  }
+
+  get isPaused(): boolean {
+    return !!this.paused;
+  }
+
   stop(): void {
     if (!this.running) return;
+    clearTimeout(this.resumeTimer);
     this.running = false;
     this.observer?.disconnect();
     for (const restore of this.restores.splice(0)) restore();
@@ -139,7 +198,7 @@ export class ChronosRecorder {
 
   /** Record an event, after any DOM change that happened before it. */
   private push(type: number, ...payload: unknown[]): void {
-    if (!this.running) return;
+    if (!this.running || this.paused) return;
     this.prepare();
     this.events.push([this.now(), type, ...payload]);
   }
@@ -198,7 +257,7 @@ export class ChronosRecorder {
   }
 
   private onMutations(records: MutationRecord[]): void {
-    if (!this.running) return;
+    if (!this.running || this.paused) return;
     if (this.checkoutDue()) {
       this.snapshot();
       return;
@@ -424,10 +483,19 @@ export class ChronosRecorder {
     const path = location.pathname;
     if (path === this.lastPath) return;
     this.lastPath = path;
-    this.push(E.Nav, path);
+    const pauseOn = this.options.pauseOn;
+    if (pauseOn?.(path)) {
+      this.pause("page");
+      return;
+    }
+    // Leaving a paused page: the new one may not have rendered yet (a back
+    // navigation fires before it does), so wait before the fresh snapshot.
+    if (this.paused === "page") this.resume(500);
+    else this.push(E.Nav, path);
   }
 
   private onPageHide(): void {
+    if (this.paused) return;
     if (this.pending) {
       clearTimeout(this.pending.timer);
       const { reason } = this.pending;
@@ -602,6 +670,7 @@ export class ChronosRecorder {
   // ── errors and sending ──────────────────────────────────────────────────
 
   private error(kind: string, message: string, stack?: string): void {
+    if (this.paused) return;
     if (!this.running) return;
     const event: unknown[] = [kind, message.slice(0, 1000)];
     if (stack) event.push(stack.slice(0, 4000));

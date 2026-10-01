@@ -1,4 +1,4 @@
-export { decodeReplay } from "../codec.js";
+export { decodeReplay, fromBase64, toBase64 } from "../codec.js";
 export { absoluteEvents, E } from "../format.js";
 export { deriveActions } from "./actions.js";
 export { assembleReplays, REPLAYS_KQL, readAssembled, } from "./appinsights.js";

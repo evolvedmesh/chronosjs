@@ -17,8 +17,21 @@ export interface PlayerOptions {
     startAt?: number;
     /** `fit` scales the page to the player; `1` shows it at its real size (the stage scrolls). Default `fit`. */
     zoom?: "fit" | number;
+    /**
+     * Draw the player's own controls, error banner and action list. False gives
+     * just the page and the cursor, for a host that draws its own controls with
+     * the API (`play`, `pause`, `seek`, `setSpeed`, `setZoom`, `on("time")`). Default true.
+     */
+    controls?: boolean;
+    /**
+     * Where to load the recorded page's images, stylesheets and fonts from: gets
+     * the absolute URL, returns another (a proxy on your own origin, say).
+     */
+    resolveUrl?: (url: string) => string;
+    /** Nodes a replay may create, at most (replays are untrusted input). Default 500,000. */
+    maxNodes?: number;
 }
-type PlayerEvent = "time" | "play" | "pause" | "end";
+type PlayerEvent = "time" | "play" | "pause" | "end" | "error";
 /**
  * Plays a Chronos replay: the page as the user saw it, in a sandboxed iframe
  * (no script from the recording ever runs), with a cursor that moves to each
@@ -32,6 +45,8 @@ export declare class ChronosPlayer {
     /** Set once the iframe's own document has loaded (see `ready`). */
     private builder;
     private isReady;
+    /** Set when the replay could not be rebuilt; the player then stays still. */
+    failure?: Error;
     private statesCheck;
     private readonly cursor;
     private emulator;

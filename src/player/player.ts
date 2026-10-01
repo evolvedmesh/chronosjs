@@ -31,9 +31,22 @@ export interface PlayerOptions {
   startAt?: number;
   /** `fit` scales the page to the player; `1` shows it at its real size (the stage scrolls). Default `fit`. */
   zoom?: "fit" | number;
+  /**
+   * Draw the player's own controls, error banner and action list. False gives
+   * just the page and the cursor, for a host that draws its own controls with
+   * the API (`play`, `pause`, `seek`, `setSpeed`, `setZoom`, `on("time")`). Default true.
+   */
+  controls?: boolean;
+  /**
+   * Where to load the recorded page's images, stylesheets and fonts from: gets
+   * the absolute URL, returns another (a proxy on your own origin, say).
+   */
+  resolveUrl?: (url: string) => string;
+  /** Nodes a replay may create, at most (replays are untrusted input). Default 500,000. */
+  maxNodes?: number;
 }
 
-type PlayerEvent = "time" | "play" | "pause" | "end";
+type PlayerEvent = "time" | "play" | "pause" | "end" | "error";
 
 const IDLE_MS = 2500;
 const LEAD_MS = 1400;
@@ -52,6 +65,8 @@ export class ChronosPlayer {
   /** Set once the iframe's own document has loaded (see `ready`). */
   private builder!: DomBuilder;
   private isReady = false;
+  /** Set when the replay could not be rebuilt; the player then stays still. */
+  failure?: Error;
   private statesCheck = 0;
   private readonly cursor: CursorPath;
   private emulator!: Emulator;
@@ -143,7 +158,8 @@ export class ChronosPlayer {
     this.banner = h("div", "chronos-banner", this.stage);
     this.banner.setAttribute("role", "status");
 
-    const controls = h("div", "chronos-controls", main);
+    // Without controls they are still built (the code that updates them stays simple), never shown.
+    const controls = h("div", "chronos-controls", options.controls === false ? undefined : main);
     this.playButton = h("button", "chronos-btn", controls);
     this.playButton.type = "button";
     this.playButton.addEventListener("click", () => this.toggle());
@@ -201,7 +217,8 @@ export class ChronosPlayer {
       zoomLabel();
     });
 
-    if (options.showActions ?? true) this.buildActionList(h);
+    if (options.controls === false) this.root.dataset.headless = "";
+    if ((options.showActions ?? true) && options.controls !== false) this.buildActionList(h);
 
     this.root.addEventListener("keydown", (event) => {
       if (event.target !== this.root && event.target !== this.track) return;
@@ -228,7 +245,12 @@ export class ChronosPlayer {
             reject(new Error("chronosjs: the player needs a same-origin iframe"));
             return;
           }
-          this.builder = new DomBuilder(doc, { live: true, assets: replay.assets });
+          this.builder = new DomBuilder(doc, {
+            live: true,
+            assets: replay.assets,
+            resolveUrl: options.resolveUrl,
+            maxNodes: options.maxNodes,
+          });
           this.emulator = new Emulator(doc);
           this.isReady = true;
           this.render();
@@ -429,8 +451,18 @@ export class ChronosPlayer {
 
   private render(): void {
     const frame = this.cursor.at(this.time);
-    if (this.isReady) {
-      this.applyUntil(this.time);
+    if (this.isReady && !this.failure) {
+      try {
+        this.applyUntil(this.time);
+      } catch (error) {
+        // A malformed or oversized replay: stop, say so, never half-render.
+        this.failure = error instanceof Error ? error : new Error(String(error));
+        this.pause();
+        this.emit("error");
+        this.banner.dataset.show = "";
+        this.banner.textContent = "⚠ This replay can't be shown.";
+        return;
+      }
       this.renderStates(frame);
       // Firefox applies a scroll on its next frame, which changes what the
       // cursor is over: look again then (it fires no scroll event without scripts).
@@ -461,7 +493,9 @@ export class ChronosPlayer {
 
     let error: Action | undefined;
     for (const candidate of this.errors) if (candidate.t <= this.time) error = candidate;
-    if (error) {
+    if (this.failure) {
+      // The failure message stays.
+    } else if (error && !this.root.dataset.headless) {
       this.banner.dataset.show = "";
       this.banner.textContent = `⚠ ${error.label}`;
     } else {

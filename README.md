@@ -15,7 +15,7 @@ Application Insights is supported first. Other services are a `Transport` away.
 chronosjs installs from GitHub; pin a release tag:
 
 ```sh
-bun add github:evolvedmesh/chronosjs#v0.1.0
+bun add github:evolvedmesh/chronosjs#v0.2.0
 ```
 
 The built `dist/` is committed, so installing needs no build step. Imports: `chronosjs` (recorder and transports, for the app being recorded), `chronosjs/player` (decoding and playing, for the app that shows replays) and `chronosjs/react` (components for both).
@@ -91,6 +91,8 @@ appInsightsTransport({ sdk: appInsights });
 
 URLs are recorded without query strings or fragments. Hidden inputs, `<script>` content, `on*` attributes, `<meta>` tags and the content of iframes are never recorded.
 
+**Pages that must never be recorded** (sealed bids, secrets): pass `pauseOn: (path) => …`. It is checked on load and on every navigation. While it matches, nothing is recorded, and everything recorded before is discarded, so no replay or saved buffer can hold what was on that page. Leaving the page, recording starts again from a fresh snapshot, taken once the next page has had 500 ms to render. `pauseRecording()` and `resumeRecording()` do the same from code.
+
 ## Application Insights
 
 A replay is sent as `customEvents` named `chronos.replay`. Application Insights caps a property value at 8,192 characters and an item at 64 KB, so the compressed replay is base64-encoded into parts of 8,000 characters (`d0`…`d6`), seven per item. Most replays are one item. Each item carries `chronosId`, `chronosSeq` and `chronosTotal`. The first item also carries `chronosError`, `chronosErrorKind`, `chronosBytes` and `chronosStart`.
@@ -134,7 +136,25 @@ The player is a sandboxed iframe (`allow-same-origin`, no scripts), scaled to fi
 - play/pause, speed (0.5× to 8×), "Skip idle" and "Jump to error";
 - the list of what happened: pages, clicks, typing (one line per field), choices, keys, network calls and errors, each one a seek target.
 
-Images, stylesheets and fonts load from the recorded app's URLs, through a `<base>` set to the page that was recorded. The viewer's Content Security Policy must allow them (`img-src`, `style-src`, `font-src`). When the viewer runs on another origin than the app:
+Player options:
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `autoplay`, `speed`, `skipIdle`, `startAt` | off, 1, on, 0 | Playback |
+| `zoom` | `"fit"` | `"fit"`, or a fixed scale (`1` is real size) |
+| `controls` | `true` | `false` gives just the page and the cursor (headless), for a host that draws its own controls with the API: `play()`, `pause()`, `seek(ms)`, `setSpeed()`, `setZoom()`, `on("time" \| "play" \| "pause" \| "end" \| "error")`, `duration`, `currentTime`, `actions` |
+| `showActions` | `true` | The list of what happened |
+| `resolveUrl(url)` | | Where to load the recorded page's images, stylesheets and fonts from. Gets each absolute URL (attributes, `srcset`, inline styles, style sheets, CSSOM rules), returns another: a proxy on your own origin, say. |
+| `maxNodes` | 500,000 | Nodes a replay may create; beyond it the player stops and emits `error` |
+
+**Replays are untrusted input.** Anyone with an app's ingestion key (it is in every browser bundle) can send one, so the player:
+
+- builds no `<script>`, `<base>`, `<meta>`, `<object>`, `<embed>` or `<frame>`;
+- sets no `on*` attribute, `srcdoc`, form action, or `javascript:`/`data:text/html` address, and no `src` on an iframe;
+- loads only `http(s)` addresses, through `resolveUrl` when you give one;
+- caps the number of nodes, and `decodeReplay()` caps the decoded size (64 MB by default, `{ maxBytes }`).
+
+Without `resolveUrl`, images, stylesheets and fonts load from the recorded app's URLs, through a `<base>` set to the page that was recorded. The viewer's Content Security Policy must allow them (`img-src`, `style-src`, `font-src`). When the viewer runs on another origin than the app:
 
 - fonts need the app to send `Access-Control-Allow-Origin`;
 - hover, focus and dark-mode emulation can only adapt stylesheets the viewer may read. Inline styles and CSS-in-JS rules always work. For CSS files, send `Access-Control-Allow-Origin` with them, or record with `inlineStylesheets: true`.

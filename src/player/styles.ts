@@ -8,6 +8,7 @@ export const PLAYER_CSS = `
 @media (prefers-color-scheme:dark){.chronos:not([data-theme=light]){--c-bg:#16191f;--c-panel:#1d2129;--c-border:#2c323d;--c-text:#e6e9ef;--c-muted:#97a0b0;--c-accent:#7c9cff;--c-error:#ff6b6b;--c-warn:#f0b35a;--c-stage:#0f1115}}
 .chronos[data-theme=dark]{--c-bg:#16191f;--c-panel:#1d2129;--c-border:#2c323d;--c-text:#e6e9ef;--c-muted:#97a0b0;--c-accent:#7c9cff;--c-error:#ff6b6b;--c-warn:#f0b35a;--c-stage:#0f1115}
 .chronos-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.chronos[data-headless]{border:0;border-radius:0;min-height:0;background:transparent}
 .chronos-stage{position:relative;flex:1;min-height:200px;overflow:hidden;background:var(--c-stage)}
 .chronos-frame{position:absolute;left:0;top:0;transform-origin:0 0;background:#fff;box-shadow:0 2px 18px rgba(0,0,0,.18);overflow:hidden}
 .chronos-frame iframe{display:block;border:0;width:100%;height:100%;pointer-events:none;background:#fff}

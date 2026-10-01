@@ -29,6 +29,13 @@ export interface RecorderOptions {
     persist?: boolean;
     /** Last chance to change or drop (return null) a replay before it is sent. */
     beforeSend?: (replay: Replay) => Replay | null;
+    /**
+     * Pages that must never be recorded (sealed or secret information). Checked
+     * on load and on every navigation; while it returns true nothing is
+     * recorded, and the history before it is discarded, so no replay can hold
+     * what was on that page. Gets `location.pathname`.
+     */
+    pauseOn?: (path: string) => boolean;
     /** Called after a replay was handed to the transports. */
     onReplay?: (replay: Replay, bytes: number) => void;
 }
@@ -49,6 +56,9 @@ export declare class ChronosRecorder {
     private lastScroll;
     private resizeTimer?;
     private lastPath;
+    /** Why recording is paused: by the app (`pause()`), or by `pauseOn` for the page shown. */
+    private paused?;
+    private resumeTimer?;
     /** Where the mouse last rested, and the timer that notices it resting again. */
     private pointer?;
     private readonly bufferMs;
@@ -57,6 +67,18 @@ export declare class ChronosRecorder {
     running: boolean;
     constructor(options: RecorderOptions);
     start(): void;
+    /**
+     * Stop recording and discard everything recorded so far (nothing from
+     * before is ever sent). `resume()` starts again from a fresh snapshot.
+     */
+    pause(by?: "app" | "page"): void;
+    /**
+     * Record again, from a fresh snapshot taken after `delayMs` (give a page
+     * that is still being replaced time to render, so the snapshot never holds
+     * what was paused).
+     */
+    resume(delayMs?: number): void;
+    get isPaused(): boolean;
     stop(): void;
     /** Report an error the app caught itself (an error boundary, a failed action). */
     captureError(error: unknown, kind?: string): void;

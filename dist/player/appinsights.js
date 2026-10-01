@@ -39,9 +39,9 @@ export function assembleReplays(rows) {
     });
 }
 /** Decode one assembled replay. */
-export async function readAssembled(assembled) {
+export async function readAssembled(assembled, options) {
     if (!assembled.data)
         throw new Error(`chronosjs: replay ${assembled.id} has ${assembled.received} of ${assembled.total} parts`);
-    return decodeReplay(assembled.data.bytes, assembled.data.codec);
+    return decodeReplay(assembled.data.bytes, assembled.data.codec, options);
 }
 //# sourceMappingURL=appinsights.js.map

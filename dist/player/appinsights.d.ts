@@ -1,4 +1,4 @@
-import { type Codec } from "../codec.js";
+import { type Codec, type DecodeOptions } from "../codec.js";
 import type { Replay } from "../format.js";
 /** One `customEvents` row, or just its `customDimensions` (as Log Analytics returns them). */
 export type AppInsightsRow = {
@@ -24,4 +24,4 @@ export interface AssembledReplay {
 /** Group telemetry rows by replay and join their parts. */
 export declare function assembleReplays(rows: AppInsightsRow[]): AssembledReplay[];
 /** Decode one assembled replay. */
-export declare function readAssembled(assembled: AssembledReplay): Promise<Replay>;
+export declare function readAssembled(assembled: AssembledReplay, options?: DecodeOptions): Promise<Replay>;

@@ -10,9 +10,36 @@ export type Codec = "deflate-raw" | "json";
 
 const hasCompression = typeof CompressionStream !== "undefined";
 
-async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
-  const body = new Blob([bytes as BlobPart]).stream().pipeThrough(stream);
-  return new Uint8Array(await new Response(body).arrayBuffer());
+async function pipe(
+  bytes: Uint8Array,
+  stream: CompressionStream | DecompressionStream,
+  maxBytes = Number.POSITIVE_INFINITY,
+): Promise<Uint8Array> {
+  const reader = new Blob([bytes as BlobPart]).stream().pipeThrough(stream).getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > maxBytes) {
+      await reader.cancel();
+      throw new Error(`chronosjs: the replay is larger than ${maxBytes} bytes when decoded`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.length;
+  }
+  return out;
+}
+
+export interface DecodeOptions {
+  /** Decoded (JSON) size allowed, at most: replays are untrusted input. Default 64 MB. */
+  maxBytes?: number;
 }
 
 export async function encodeReplay(replay: Replay): Promise<{ bytes: Uint8Array; codec: Codec }> {
@@ -21,10 +48,14 @@ export async function encodeReplay(replay: Replay): Promise<{ bytes: Uint8Array;
   return { bytes: await pipe(json, new CompressionStream("deflate-raw")), codec: "deflate-raw" };
 }
 
-export async function decodeReplay(bytes: Uint8Array, codec?: Codec): Promise<Replay> {
+export async function decodeReplay(bytes: Uint8Array, codec?: Codec, options: DecodeOptions = {}): Promise<Replay> {
+  const maxBytes = options.maxBytes ?? 64 * 1024 * 1024;
   const plain = codec === "json" || (codec === undefined && looksLikeJson(bytes));
-  const json = plain ? bytes : await pipe(bytes, new DecompressionStream("deflate-raw"));
-  return JSON.parse(new TextDecoder().decode(json)) as Replay;
+  if (plain && bytes.length > maxBytes) throw new Error(`chronosjs: the replay is larger than ${maxBytes} bytes`);
+  const json = plain ? bytes : await pipe(bytes, new DecompressionStream("deflate-raw"), maxBytes);
+  const replay = JSON.parse(new TextDecoder().decode(json)) as Replay;
+  if (replay?.v !== 1 || !Array.isArray(replay.e)) throw new Error("chronosjs: not a version 1 replay");
+  return replay;
 }
 
 function looksLikeJson(bytes: Uint8Array): boolean {

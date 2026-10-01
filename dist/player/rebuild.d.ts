@@ -7,6 +7,14 @@ export interface BuilderOptions {
      * positions are applied. Off for the detached document used to label actions.
      */
     live: boolean;
+    /**
+     * Where to load an address of the recorded page from (images, stylesheets,
+     * fonts, backgrounds). Gets the absolute URL; return another (a proxy on
+     * your own origin, say). Default: the URL itself.
+     */
+    resolveUrl?: (url: string) => string;
+    /** Nodes one snapshot and its changes may create, at most. Default 500,000. */
+    maxNodes?: number;
 }
 /**
  * Rebuilds a recorded page in a document. Node ids are assigned in the same
@@ -21,6 +29,8 @@ export declare class DomBuilder {
     private deferred;
     /** The document scroll position last applied, re-applied when stylesheets load. */
     private docScroll;
+    /** The recorded page's address, which relative addresses resolve against. */
+    private base;
     constructor(doc: Document, options: BuilderOptions);
     /** Replace the document's content with a snapshot of the page at `href`. */
     snapshot(tree: SElement, href: string, scrollX?: number, scrollY?: number): void;
@@ -33,6 +43,11 @@ export declare class DomBuilder {
     private view;
     private scrollDocument;
     private assign;
+    /** An address of the recorded page as the player loads it, or null when it must not be loaded. */
+    url(value: string): string | null;
+    /** A stylesheet with its addresses resolved. */
+    css(text: string): string;
+    private srcset;
     private create;
     private asset;
     private setAttrs;

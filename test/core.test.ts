@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { decodeReplay, encodeReplay } from "../src/codec.ts";
+import { mapCssUrls } from "../src/css-urls.ts";
 import { absoluteEvents, deltaEvents, E, type Replay, type ReplayEvent } from "../src/format.ts";
 import { assembleReplays, readAssembled } from "../src/player/appinsights.ts";
 import { CursorPath } from "../src/player/cursor.ts";
@@ -175,5 +176,22 @@ describe("state emulation", () => {
       "(max-width: 0px) and (max-width: 0px)",
     );
     expect(rewriteMedia("(min-width: 600px)", dark)).toBe("(min-width: 600px)");
+  });
+});
+
+describe("untrusted replays", () => {
+  test("stylesheet addresses can be mapped", () => {
+    const css = `a{background:url(/a.png)} @import "x.css"; b{background:url('b.png')} c{background:url( "c.png" )}`;
+    expect(mapCssUrls(css, (url) => `P(${url})`)).toBe(
+      `a{background:url("P(/a.png)")} @import "P(x.css)"; b{background:url('P(b.png)')} c{background:url("P(c.png)")}`,
+    );
+  });
+
+  test("decoding refuses what is too large or not a replay", async () => {
+    const replay = sampleReplay(2000);
+    const encoded = await encodeReplay(replay);
+    await expect(decodeReplay(encoded.bytes, encoded.codec, { maxBytes: 1000 })).rejects.toThrow(/larger than 1000/);
+    const notReplay = await encodeReplay({ hello: "world" } as unknown as Replay);
+    await expect(decodeReplay(notReplay.bytes, notReplay.codec)).rejects.toThrow(/not a version 1 replay/);
   });
 });

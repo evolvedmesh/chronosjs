@@ -20,6 +20,9 @@ export class ChronosRecorder {
     lastScroll = new WeakMap();
     resizeTimer;
     lastPath = "";
+    /** Why recording is paused: by the app (`pause()`), or by `pauseOn` for the page shown. */
+    paused;
+    resumeTimer;
     /** Where the mouse last rested, and the timer that notices it resting again. */
     pointer;
     bufferMs;
@@ -38,15 +41,70 @@ export class ChronosRecorder {
             return;
         this.running = true;
         this.restore();
-        this.snapshot();
+        if (this.options.pauseOn?.(location.pathname))
+            this.pause("page");
+        else
+            this.snapshot();
         this.observer = new MutationObserver((records) => this.onMutations(records));
         this.observer.observe(document, { childList: true, subtree: true, attributes: true, characterData: true });
         this.listen();
         this.patch();
     }
+    /**
+     * Stop recording and discard everything recorded so far (nothing from
+     * before is ever sent). `resume()` starts again from a fresh snapshot.
+     */
+    pause(by = "app") {
+        clearTimeout(this.resumeTimer);
+        this.resumeTimer = undefined;
+        if (this.paused) {
+            if (by === "app")
+                this.paused = "app";
+            return;
+        }
+        this.paused = by;
+        this.observer?.takeRecords();
+        this.events = [];
+        this.checkpoints = [];
+        if (this.pending)
+            clearTimeout(this.pending.timer);
+        this.pending = undefined;
+        try {
+            sessionStorage.removeItem(STORAGE_KEY);
+        }
+        catch {
+            // Storage blocked: there is nothing in it either.
+        }
+    }
+    /**
+     * Record again, from a fresh snapshot taken after `delayMs` (give a page
+     * that is still being replaced time to render, so the snapshot never holds
+     * what was paused).
+     */
+    resume(delayMs = 0) {
+        if (!this.paused || !this.running)
+            return;
+        clearTimeout(this.resumeTimer);
+        const go = () => {
+            this.resumeTimer = undefined;
+            if (!this.paused || this.options.pauseOn?.(location.pathname))
+                return;
+            this.paused = undefined;
+            this.observer?.takeRecords();
+            this.snapshot();
+        };
+        if (delayMs > 0)
+            this.resumeTimer = setTimeout(go, delayMs);
+        else
+            go();
+    }
+    get isPaused() {
+        return !!this.paused;
+    }
     stop() {
         if (!this.running)
             return;
+        clearTimeout(this.resumeTimer);
         this.running = false;
         this.observer?.disconnect();
         for (const restore of this.restores.splice(0))
@@ -88,7 +146,7 @@ export class ChronosRecorder {
     }
     /** Record an event, after any DOM change that happened before it. */
     push(type, ...payload) {
-        if (!this.running)
+        if (!this.running || this.paused)
             return;
         this.prepare();
         this.events.push([this.now(), type, ...payload]);
@@ -144,7 +202,7 @@ export class ChronosRecorder {
             this.onMutations(records);
     }
     onMutations(records) {
-        if (!this.running)
+        if (!this.running || this.paused)
             return;
         if (this.checkoutDue()) {
             this.snapshot();
@@ -397,9 +455,21 @@ export class ChronosRecorder {
         if (path === this.lastPath)
             return;
         this.lastPath = path;
-        this.push(E.Nav, path);
+        const pauseOn = this.options.pauseOn;
+        if (pauseOn?.(path)) {
+            this.pause("page");
+            return;
+        }
+        // Leaving a paused page: the new one may not have rendered yet (a back
+        // navigation fires before it does), so wait before the fresh snapshot.
+        if (this.paused === "page")
+            this.resume(500);
+        else
+            this.push(E.Nav, path);
     }
     onPageHide() {
+        if (this.paused)
+            return;
         if (this.pending) {
             clearTimeout(this.pending.timer);
             const { reason } = this.pending;
@@ -572,6 +642,8 @@ export class ChronosRecorder {
     }
     // ── errors and sending ──────────────────────────────────────────────────
     error(kind, message, stack) {
+        if (this.paused)
+            return;
         if (!this.running)
             return;
         const event = [kind, message.slice(0, 1000)];

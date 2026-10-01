@@ -1,4 +1,4 @@
-import { type Codec, decodeReplay, fromBase64 } from "../codec.js";
+import { type Codec, type DecodeOptions, decodeReplay, fromBase64 } from "../codec.js";
 import type { Replay } from "../format.js";
 import { PARTS_PER_ITEM } from "../transports/appinsights.js";
 
@@ -54,8 +54,8 @@ export function assembleReplays(rows: AppInsightsRow[]): AssembledReplay[] {
 }
 
 /** Decode one assembled replay. */
-export async function readAssembled(assembled: AssembledReplay): Promise<Replay> {
+export async function readAssembled(assembled: AssembledReplay, options?: DecodeOptions): Promise<Replay> {
   if (!assembled.data)
     throw new Error(`chronosjs: replay ${assembled.id} has ${assembled.received} of ${assembled.total} parts`);
-  return decodeReplay(assembled.data.bytes, assembled.data.codec);
+  return decodeReplay(assembled.data.bytes, assembled.data.codec, options);
 }

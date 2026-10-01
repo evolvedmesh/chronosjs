@@ -20,6 +20,8 @@ export class ChronosPlayer {
     /** Set once the iframe's own document has loaded (see `ready`). */
     builder;
     isReady = false;
+    /** Set when the replay could not be rebuilt; the player then stays still. */
+    failure;
     statesCheck = 0;
     cursor;
     emulator;
@@ -109,7 +111,8 @@ export class ChronosPlayer {
         this.cursorEl.innerHTML = CURSOR_SVG;
         this.banner = h("div", "chronos-banner", this.stage);
         this.banner.setAttribute("role", "status");
-        const controls = h("div", "chronos-controls", main);
+        // Without controls they are still built (the code that updates them stays simple), never shown.
+        const controls = h("div", "chronos-controls", options.controls === false ? undefined : main);
         this.playButton = h("button", "chronos-btn", controls);
         this.playButton.type = "button";
         this.playButton.addEventListener("click", () => this.toggle());
@@ -166,7 +169,9 @@ export class ChronosPlayer {
             this.setZoom(this.zoom === "fit" ? 1 : "fit");
             zoomLabel();
         });
-        if (options.showActions ?? true)
+        if (options.controls === false)
+            this.root.dataset.headless = "";
+        if ((options.showActions ?? true) && options.controls !== false)
             this.buildActionList(h);
         this.root.addEventListener("keydown", (event) => {
             if (event.target !== this.root && event.target !== this.track)
@@ -193,7 +198,12 @@ export class ChronosPlayer {
                     reject(new Error("chronosjs: the player needs a same-origin iframe"));
                     return;
                 }
-                this.builder = new DomBuilder(doc, { live: true, assets: replay.assets });
+                this.builder = new DomBuilder(doc, {
+                    live: true,
+                    assets: replay.assets,
+                    resolveUrl: options.resolveUrl,
+                    maxNodes: options.maxNodes,
+                });
                 this.emulator = new Emulator(doc);
                 this.isReady = true;
                 this.render();
@@ -375,8 +385,19 @@ export class ChronosPlayer {
     // ── rendering ───────────────────────────────────────────────────────────
     render() {
         const frame = this.cursor.at(this.time);
-        if (this.isReady) {
-            this.applyUntil(this.time);
+        if (this.isReady && !this.failure) {
+            try {
+                this.applyUntil(this.time);
+            }
+            catch (error) {
+                // A malformed or oversized replay: stop, say so, never half-render.
+                this.failure = error instanceof Error ? error : new Error(String(error));
+                this.pause();
+                this.emit("error");
+                this.banner.dataset.show = "";
+                this.banner.textContent = "⚠ This replay can't be shown.";
+                return;
+            }
             this.renderStates(frame);
             // Firefox applies a scroll on its next frame, which changes what the
             // cursor is over: look again then (it fires no scroll event without scripts).
@@ -408,7 +429,10 @@ export class ChronosPlayer {
         for (const candidate of this.errors)
             if (candidate.t <= this.time)
                 error = candidate;
-        if (error) {
+        if (this.failure) {
+            // The failure message stays.
+        }
+        else if (error && !this.root.dataset.headless) {
             this.banner.dataset.show = "";
             this.banner.textContent = `⚠ ${error.label}`;
         }

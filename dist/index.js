@@ -28,6 +28,17 @@ export function stopRecording() {
 export function captureError(error, kind = "captured") {
     current?.captureError(error, kind);
 }
+/**
+ * Stop recording and discard what was recorded, for something that must
+ * never be in a replay. `resumeRecording()` starts again from a fresh snapshot.
+ * For whole pages, prefer the `pauseOn` option.
+ */
+export function pauseRecording() {
+    current?.pause("app");
+}
+export function resumeRecording(delayMs = 0) {
+    current?.resume(delayMs);
+}
 export function currentRecorder() {
     return current;
 }

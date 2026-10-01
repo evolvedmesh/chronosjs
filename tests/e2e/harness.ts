@@ -48,7 +48,7 @@ export function canonical(doc: Document): string {
     if (node.nodeType !== 1) return;
     const el = node as Element;
     const tag = el.localName;
-    if (skip.has(tag)) return;
+    if (skip.has(tag) || tag.startsWith("chronos-")) return;
     const attrs = Array.from(el.attributes)
       // The player's hover and focus emulation, not part of the page.
       .filter((a) => !/^data-chronos-(hover|active|focus)/.test(a.name))

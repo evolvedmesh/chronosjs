@@ -1,4 +1,4 @@
-export { decodeReplay } from "../codec.js";
+export { type Codec, type DecodeOptions, decodeReplay, fromBase64, toBase64 } from "../codec.js";
 export { absoluteEvents, E, type Replay, type ReplayEvent } from "../format.js";
 export { type Action, type ActionKind, deriveActions } from "./actions.js";
 export {

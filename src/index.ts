@@ -1,6 +1,6 @@
 import { ChronosRecorder, type RecorderOptions } from "./recorder/recorder.js";
 
-export type { Codec } from "./codec.js";
+export type { Codec, DecodeOptions } from "./codec.js";
 export { decodeReplay, encodeReplay, fromBase64, toBase64 } from "./codec.js";
 export * from "./format.js";
 export { ChronosRecorder, type RecorderOptions } from "./recorder/recorder.js";
@@ -39,6 +39,19 @@ export function stopRecording(): void {
 /** Report an error the app handled itself (error boundary, failed action): it triggers a replay. */
 export function captureError(error: unknown, kind = "captured"): void {
   current?.captureError(error, kind);
+}
+
+/**
+ * Stop recording and discard what was recorded, for something that must
+ * never be in a replay. `resumeRecording()` starts again from a fresh snapshot.
+ * For whole pages, prefer the `pauseOn` option.
+ */
+export function pauseRecording(): void {
+  current?.pause("app");
+}
+
+export function resumeRecording(delayMs = 0): void {
+  current?.resume(delayMs);
 }
 
 export function currentRecorder(): ChronosRecorder | undefined {

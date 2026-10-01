@@ -1,6 +1,6 @@
 {
   "name": "chronosjs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Records what a user did in a web app as a small replay file and sends it to your telemetry service when they hit an error.",
   "license": "MIT",
   "type": "module",
