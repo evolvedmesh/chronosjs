@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" class="fixture">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fidelity fixture</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      body { font-family: sans-serif; }
+      .box { padding: 4px; border: 1px solid #ccc; }
+    </style>
+    <style id="cssom"></style>
+  </head>
+  <body>
+    <!-- a comment before the content -->
+    <header><h1>Fixture <em>page</em></h1></header>
+    <main id="arena">
+      <section class="box" data-n="1"><p>First <b>bold</b> text</p><ul><li>a</li><li>b</li></ul></section>
+      <section class="box" data-n="2">
+        <form>
+          <label for="name">Name</label>
+          <input id="name" name="name" value="initial" />
+          <input id="agree" type="checkbox" checked />
+          <select id="pick"><option value="x">X</option><option value="y" selected>Y</option></select>
+          <textarea id="notes">some notes</textarea>
+        </form>
+      </section>
+      <section class="box" data-n="3">
+        <svg width="80" height="40" viewBox="0 0 80 40"><title>shapes</title><linearGradient id="g"><stop offset="0" stop-color="red" /></linearGradient><circle cx="20" cy="20" r="10" fill="url(#g)" /><foreignObject x="40" y="0" width="40" height="40"><div>fo</div></foreignObject></svg>
+      </section>
+      <script>
+        window.inlineScriptRan = true;
+      </script>
+    </main>
+  </body>
+</html>

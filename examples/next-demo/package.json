@@ -1,0 +1,22 @@
+{
+  "name": "next-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --bun next dev -p 3100",
+    "build": "bun --bun next build",
+    "start": "bun --bun next start -p 3100",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^7.0.2"
+  }
+}
