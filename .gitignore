@@ -6,3 +6,5 @@ playwright-report
 tests/fixtures/*.js
 *.tsbuildinfo
 next-env.d.ts
+dist
+release

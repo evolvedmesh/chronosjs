@@ -12,13 +12,13 @@ Application Insights is supported first. Other services are a `Transport` away.
 
 ## Installing
 
-chronosjs installs from GitHub; pin a release tag:
+chronosjs installs from its GitHub release: each release has the packed library attached (`chronosjs-X.Y.Z.tgz`, built by CI). Pin a version:
 
 ```sh
-bun add github:evolvedmesh/chronosjs#v0.2.1
+bun add https://github.com/evolvedmesh/chronosjs/releases/download/v0.2.1/chronosjs-0.2.1.tgz
 ```
 
-The built `dist/` is committed, so installing needs no build step. Imports: `chronosjs` (recorder and transports, for the app being recorded), `chronosjs/player` (decoding and playing, for the app that shows replays) and `chronosjs/react` (components for both).
+The lockfile pins the tarball's exact bytes; upgrading is changing the version in the URL (the [releases](https://github.com/evolvedmesh/chronosjs/releases) list them, with notes). Imports: `chronosjs` (recorder and transports, for the app being recorded), `chronosjs/player` (decoding and playing, for the app that shows replays) and `chronosjs/react` (components for both).
 
 ## Quick start (Next.js)
 
@@ -181,7 +181,7 @@ Event codes are append-only, so old replays keep playing.
 ## Repository
 
 ```
-src/  test/  dist/       the library (recorder, transports, player, React bindings); dist/ is committed, see Installing
+src/  test/              the library (recorder, transports, player, React bindings); `bun run build` writes dist/
 examples/next-demo/      a Next.js shop that breaks three ways, a mock Application Insights endpoint and a replay viewer
 tests/e2e/               Playwright (run by bun test): DOM fidelity fuzzing, pixel comparison of live and replayed pages, the demo end to end
 ```
@@ -192,6 +192,7 @@ tests/e2e/               Playwright (run by bun test): DOM fidelity fuzzing, pix
 | `bun run demo`   | Build the library, start the demo on http://localhost:3100 (replays at `/replays`)                |
 | `bun run check`  | Lint, typecheck, unit tests                                                                        |
 | `bun run e2e`    | Build everything, then run the browser tests (random DOM changes replayed exactly; the demo end to end) |
-| `bun run build`  | Build `dist/` (commit it with the source change; CI checks it matches)                             |
+| `bun run build`  | Build `dist/` (never committed; releases attach a packed tarball)                                  |
+| `bun run pack 1.2.3` | Build and pack `release/chronosjs-1.2.3.tgz`, as a release does                                |
 
 `CHRONOS_BROWSER=firefox` (or `webkit`) runs the browser tests in another engine; all three pass. `CHRONOS_SEEDS=40 CHRONOS_ROUNDS=250 bun test --timeout 120000 tests/e2e/fidelity.test.ts` runs a longer fuzz. `CHRONOS_SHOTS=<dir>` saves screenshots of the demo test and the live, replayed and diff images of the visual test (`tests/e2e/visual.test.ts`).

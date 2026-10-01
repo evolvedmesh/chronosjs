@@ -7,7 +7,9 @@ Guidance for AI coding agents in this repository. `CLAUDE.md` imports this file.
 - Bun only: `bun install`, `bun run`, `bun test`, `bun --bun next`. No npm, pnpm, yarn or Node runners. Browser tests use the `playwright` library from `bun test`, not the Playwright test runner.
 - `bun run check` passing is the definition of done. Run `bun run e2e` for any change to the recorder, the format or the player.
 - Biome formats and lints (`bun run fix`).
-- The library is the root package; `dist/` is committed because apps install it from GitHub (`github:evolvedmesh/chronosjs#vX.Y.Z`). Run `bun run build` and commit `dist/` with every source change; CI fails when they differ. A release is a version bump in `package.json` plus a `vX.Y.Z` tag.
+- The library is the root package. `dist/` is never committed: apps install the tarball attached to each GitHub release (`https://github.com/evolvedmesh/chronosjs/releases/download/vX.Y.Z/chronosjs-X.Y.Z.tgz`).
+- Releases are semantic-release, as in the rest of the org (`.releaserc.json`, `.github/workflows/release.yml`): every push to `main` (or `dev`, as `-dev` prereleases) reads the Conventional Commits since the last tag. When they call for a release, `scripts/pack.ts` stamps the version, builds and packs, `ci(release): X.Y.Z [skip ci]` commits `package.json` (as the evolvedmesh-release-bot App, the rulesets' bypass actor), and the tarball is attached to the release. So commit subjects decide versions: `fix:` patch, `feat:` minor, `BREAKING CHANGE` major. Never bump `package.json` by hand.
+- Changes reach `main` only through pull requests (org ruleset); CI (`ci.yml`) checks them.
 - The demo (`examples/next-demo`) imports the built `dist/` through tsconfig paths, so build before running it (`bun run demo` does).
 
 ## How it fits together

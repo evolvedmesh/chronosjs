@@ -1,6 +1,6 @@
 {
   "name": "chronosjs",
-  "version": "0.2.1",
+  "version": "0.2.0",
   "description": "Records what a user did in a web app as a small replay file and sends it to your telemetry service when they hit an error.",
   "license": "MIT",
   "type": "module",
@@ -38,9 +38,10 @@
     "lint": "biome check .",
     "fix": "biome check --write .",
     "test": "bun test ./test",
-    "check": "bun run lint && bun run typecheck && bun run test",
+    "check": "bun run lint && bun run build && bun run typecheck && bun run test",
     "e2e": "bun run build && bun scripts/bundle-fixtures.ts && bun run --cwd examples/next-demo build && bun test --timeout 180000 tests/e2e",
-    "demo": "bun run build && bun run --cwd examples/next-demo dev"
+    "demo": "bun run build && bun run --cwd examples/next-demo dev",
+    "pack": "bun scripts/pack.ts"
   },
   "peerDependencies": {
     "react": ">=18"
