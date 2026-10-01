@@ -85,15 +85,30 @@ async function diff(page: Page, a: Buffer, b: Buffer): Promise<Diff> {
       const out = new OffscreenCanvas(width, height);
       const context = out.getContext("2d") as OffscreenCanvasRenderingContext2D;
       const image = context.createImageData(width, height);
+      // Brightness, not raw RGB, and a pixel may match a neighbour within one pixel: how a machine anti-aliases
+      // text (grayscale or subpixel/LCD, which differs between a page and an iframe on some setups) is not the
+      // replay's doing. A real difference (a missing 2 px hover lift, focus ring or text) still shows.
+      const luma = (p: Uint8ClampedArray, i: number) => 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+      const matchesNear = (from: Uint8ClampedArray, to: Uint8ClampedArray, x: number, y: number) => {
+        const value = luma(from, (y * width + x) * 4);
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+            if (Math.abs(value - luma(to, (ny * width + nx) * 4)) <= 40) return true;
+          }
+        }
+        return false;
+      };
       let different = 0;
       for (let i = 0; i < pa.length; i += 4) {
-        const delta = Math.max(
-          Math.abs(pa[i] - pb[i]),
-          Math.abs(pa[i + 1] - pb[i + 1]),
-          Math.abs(pa[i + 2] - pb[i + 2]),
-        );
+        const x = (i / 4) % width;
+        const y = Math.floor(i / 4 / width);
         const gray = (pa[i] + pa[i + 1] + pa[i + 2]) / 3;
-        if (delta > 32) {
+        const differs =
+          Math.abs(luma(pa, i) - luma(pb, i)) > 40 && (!matchesNear(pa, pb, x, y) || !matchesNear(pb, pa, x, y));
+        if (differs) {
           different++;
           image.data.set([255, 0, 60, 255], i);
         } else {
