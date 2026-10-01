@@ -53,10 +53,22 @@ async function settled(page: Page, frame?: string) {
   }, frame);
 }
 
+/**
+ * A live screenshot and the time it shows. A timer may change the page while a (slow) screenshot is taken, so a
+ * moment counts only when a second screenshot right after is identical; its time is after the first one.
+ */
 async function moment(page: Page, moments: Moment[], name: string) {
-  await settled(page);
-  const t = await page.evaluate(() => Math.round(performance.timeOrigin + performance.now()));
-  moments.push({ name, t, png: await page.screenshot() });
+  const now = () => page.evaluate(() => Math.round(performance.timeOrigin + performance.now()));
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await settled(page);
+    const png = await page.screenshot();
+    const t = await now();
+    if (png.equals(await page.screenshot())) {
+      moments.push({ name, t, png });
+      return;
+    }
+  }
+  throw new Error(`the page kept changing at moment ${name}`);
 }
 
 interface Diff {
@@ -85,15 +97,30 @@ async function diff(page: Page, a: Buffer, b: Buffer): Promise<Diff> {
       const out = new OffscreenCanvas(width, height);
       const context = out.getContext("2d") as OffscreenCanvasRenderingContext2D;
       const image = context.createImageData(width, height);
+      // Brightness, not raw RGB, and a pixel may match a neighbour within one pixel: how a machine anti-aliases
+      // text (grayscale or subpixel/LCD, which differs between a page and an iframe on some setups) is not the
+      // replay's doing. A real difference (a missing 2 px hover lift, focus ring or text) still shows.
+      const luma = (p: Uint8ClampedArray, i: number) => 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+      const matchesNear = (from: Uint8ClampedArray, to: Uint8ClampedArray, x: number, y: number) => {
+        const value = luma(from, (y * width + x) * 4);
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+            if (Math.abs(value - luma(to, (ny * width + nx) * 4)) <= 40) return true;
+          }
+        }
+        return false;
+      };
       let different = 0;
       for (let i = 0; i < pa.length; i += 4) {
-        const delta = Math.max(
-          Math.abs(pa[i] - pb[i]),
-          Math.abs(pa[i + 1] - pb[i + 1]),
-          Math.abs(pa[i + 2] - pb[i + 2]),
-        );
+        const x = (i / 4) % width;
+        const y = Math.floor(i / 4 / width);
         const gray = (pa[i] + pa[i + 1] + pa[i + 2]) / 3;
-        if (delta > 32) {
+        const differs =
+          Math.abs(luma(pa, i) - luma(pb, i)) > 40 && (!matchesNear(pa, pb, x, y) || !matchesNear(pb, pa, x, y));
+        if (differs) {
           different++;
           image.data.set([255, 0, 60, 255], i);
         } else {
