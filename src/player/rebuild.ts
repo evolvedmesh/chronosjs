@@ -49,7 +49,7 @@ export interface BuilderOptions {
    * fonts, backgrounds). Gets the absolute URL; return another (a proxy on
    * your own origin, say). Default: the URL itself.
    */
-  resolveUrl?: (url: string) => string;
+  resolveUrl?: (url: string) => string | null;
   /** Nodes one snapshot and its changes may create, at most. Default 500,000. */
   maxNodes?: number;
 }
@@ -81,11 +81,16 @@ export class DomBuilder {
     this.base = safeHref(href);
     // The <base> goes in before any element exists, so every relative URL
     // (images, stylesheets, srcset) resolves against the recorded page.
+    // With resolveUrl every address is rewritten instead, and a <base> would
+    // only trip the host page's CSP (base-uri). The detached document that
+    // labels actions loads nothing, so it needs none either.
     const html = doc.createElement("html");
     const head = doc.createElement("head");
-    const base = doc.createElement("base");
-    base.setAttribute("href", this.options.resolveUrl ? "about:blank" : this.base);
-    head.appendChild(base);
+    if (this.options.live && !this.options.resolveUrl) {
+      const base = doc.createElement("base");
+      base.setAttribute("href", this.base);
+      head.appendChild(base);
+    }
     html.appendChild(head);
     doc.replaceChild(html, doc.documentElement);
 
@@ -217,13 +222,15 @@ export class DomBuilder {
       return null;
     }
     if (!/^https?:/i.test(absolute)) return null;
+    // resolveUrl may refuse an address (null): it is then not loaded at all.
     return this.options.resolveUrl ? this.options.resolveUrl(absolute) : absolute;
   }
 
   /** A stylesheet with its addresses resolved. */
   css(text: string): string {
     if (!this.options.resolveUrl && !/javascript:|vbscript:/i.test(text)) return text;
-    return mapCssUrls(text, (url) => this.url(url) ?? "about:blank");
+    // A refused address becomes an empty data URL: nothing is fetched, and the rule stays valid.
+    return mapCssUrls(text, (url) => this.url(url) ?? "data:,");
   }
 
   private srcset(value: string): string {

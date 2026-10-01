@@ -12,7 +12,7 @@ export interface BuilderOptions {
      * fonts, backgrounds). Gets the absolute URL; return another (a proxy on
      * your own origin, say). Default: the URL itself.
      */
-    resolveUrl?: (url: string) => string;
+    resolveUrl?: (url: string) => string | null;
     /** Nodes one snapshot and its changes may create, at most. Default 500,000. */
     maxNodes?: number;
 }

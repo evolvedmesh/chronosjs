@@ -15,7 +15,7 @@ Application Insights is supported first. Other services are a `Transport` away.
 chronosjs installs from GitHub; pin a release tag:
 
 ```sh
-bun add github:evolvedmesh/chronosjs#v0.2.0
+bun add github:evolvedmesh/chronosjs#v0.2.1
 ```
 
 The built `dist/` is committed, so installing needs no build step. Imports: `chronosjs` (recorder and transports, for the app being recorded), `chronosjs/player` (decoding and playing, for the app that shows replays) and `chronosjs/react` (components for both).
@@ -142,9 +142,9 @@ Player options:
 | --- | --- | --- |
 | `autoplay`, `speed`, `skipIdle`, `startAt` | off, 1, on, 0 | Playback |
 | `zoom` | `"fit"` | `"fit"`, or a fixed scale (`1` is real size) |
-| `controls` | `true` | `false` gives just the page and the cursor (headless), for a host that draws its own controls with the API: `play()`, `pause()`, `seek(ms)`, `setSpeed()`, `setZoom()`, `on("time" \| "play" \| "pause" \| "end" \| "error")`, `duration`, `currentTime`, `actions` |
+| `controls` | `true` | `false` gives just the page, the cursor and the error banner (headless), for a host that draws its own controls with the API: `play()`, `pause()`, `seek(ms)`, `setSpeed()`, `setZoom()`, `on("time" \| "play" \| "pause" \| "end" \| "error")`, `duration`, `currentTime`, `actions` |
 | `showActions` | `true` | The list of what happened |
-| `resolveUrl(url)` | | Where to load the recorded page's images, stylesheets and fonts from. Gets each absolute URL (attributes, `srcset`, inline styles, style sheets, CSSOM rules), returns another: a proxy on your own origin, say. |
+| `resolveUrl(url)` | | Where to load the recorded page's images, stylesheets and fonts from. Gets each absolute URL (attributes, `srcset`, inline styles, style sheets, CSSOM rules), returns another (a proxy on your own origin, say), or `null` to load nothing. No `<base>` is set then. |
 | `maxNodes` | 500,000 | Nodes a replay may create; beyond it the player stops and emits `error` |
 
 **Replays are untrusted input.** Anyone with an app's ingestion key (it is in every browser bundle) can send one, so the player:

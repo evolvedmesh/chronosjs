@@ -18,16 +18,16 @@ export interface PlayerOptions {
     /** `fit` scales the page to the player; `1` shows it at its real size (the stage scrolls). Default `fit`. */
     zoom?: "fit" | number;
     /**
-     * Draw the player's own controls, error banner and action list. False gives
-     * just the page and the cursor, for a host that draws its own controls with
-     * the API (`play`, `pause`, `seek`, `setSpeed`, `setZoom`, `on("time")`). Default true.
+     * Draw the player's own controls and action list. False gives just the page,
+     * the cursor and the error banner, for a host that draws its own controls
+     * with the API (`play`, `pause`, `seek`, `setSpeed`, `setZoom`, `on("time")`). Default true.
      */
     controls?: boolean;
     /**
      * Where to load the recorded page's images, stylesheets and fonts from: gets
      * the absolute URL, returns another (a proxy on your own origin, say).
      */
-    resolveUrl?: (url: string) => string;
+    resolveUrl?: (url: string) => string | null;
     /** Nodes a replay may create, at most (replays are untrusted input). Default 500,000. */
     maxNodes?: number;
 }

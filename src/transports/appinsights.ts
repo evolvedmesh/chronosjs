@@ -12,7 +12,7 @@ import type { EncodedReplay, SendContext, Transport } from "./types.js";
 export const EVENT_NAME = "chronos.replay";
 export const PART_CHARS = 8000;
 export const PARTS_PER_ITEM = 7;
-const SDK_VERSION = "chronosjs:0.2.0";
+const SDK_VERSION = "chronosjs:0.2.1";
 
 /** The part of the Application Insights web SDK the transport needs. */
 export interface AppInsightsSdk {

@@ -432,7 +432,8 @@ export class ChronosPlayer {
         if (this.failure) {
             // The failure message stays.
         }
-        else if (error && !this.root.dataset.headless) {
+        else if (error) {
+            // Also without controls: the error the replay ends on is worth showing.
             this.banner.dataset.show = "";
             this.banner.textContent = `⚠ ${error.label}`;
         }

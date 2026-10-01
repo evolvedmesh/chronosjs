@@ -64,7 +64,8 @@ describe("player", () => {
     const result = await page.evaluate(async (replay) => {
       const w = window as unknown as Record<string, any>;
       const player = new w.ChronosPlayer.ChronosPlayer(document.getElementById("root"), replay, {
-        resolveUrl: (url: string) => `/proxy?u=${encodeURIComponent(url)}`,
+        // The host refuses one address (null): it must not load at all.
+        resolveUrl: (url: string) => (url.endsWith("/bg.png") ? null : `/proxy?u=${encodeURIComponent(url)}`),
       });
       await player.ready;
       await new Promise((resolve) => setTimeout(resolve, 600));
@@ -84,6 +85,7 @@ describe("player", () => {
         css: doc.querySelector("style")?.textContent,
         action: doc.getElementById("form")?.getAttribute("action"),
         prefetch: doc.querySelector("link")?.getAttribute("href"),
+        bases: doc.querySelectorAll("base").length,
       };
     }, craftedReplay());
     expect(result.ran).toBe(false);
@@ -96,7 +98,8 @@ describe("player", () => {
     expect(result.frameSrc).toBeNull();
     expect(result.srcdoc).toBeNull();
     expect(result.style).toContain(encodeURIComponent("https://app.test/s.png"));
-    expect(result.css).toContain(encodeURIComponent("https://app.test/bg.png"));
+    expect(result.css).toContain('url("data:,")');
+    expect(result.bases).toBe(0);
     expect(result.action).toBeNull();
     expect(result.prefetch).toBeNull();
     const requests = (page as unknown as { requests: string[] }).requests;
