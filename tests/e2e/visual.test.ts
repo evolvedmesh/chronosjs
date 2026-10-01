@@ -53,10 +53,22 @@ async function settled(page: Page, frame?: string) {
   }, frame);
 }
 
+/**
+ * A live screenshot and the time it shows. A timer may change the page while a (slow) screenshot is taken, so a
+ * moment counts only when a second screenshot right after is identical; its time is after the first one.
+ */
 async function moment(page: Page, moments: Moment[], name: string) {
-  await settled(page);
-  const t = await page.evaluate(() => Math.round(performance.timeOrigin + performance.now()));
-  moments.push({ name, t, png: await page.screenshot() });
+  const now = () => page.evaluate(() => Math.round(performance.timeOrigin + performance.now()));
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await settled(page);
+    const png = await page.screenshot();
+    const t = await now();
+    if (png.equals(await page.screenshot())) {
+      moments.push({ name, t, png });
+      return;
+    }
+  }
+  throw new Error(`the page kept changing at moment ${name}`);
 }
 
 interface Diff {
