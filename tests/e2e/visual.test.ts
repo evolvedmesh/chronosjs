@@ -62,6 +62,10 @@ async function moment(page: Page, moments: Moment[], name: string) {
   for (let attempt = 0; attempt < 6; attempt++) {
     await settled(page);
     const png = await page.screenshot();
+    if (!png.equals(await page.screenshot())) continue;
+    // The recorder stamps a change when the browser delivers it, which can lag on a busy machine: take the moment's
+    // time a beat after the page settled, and only when nothing changed in between.
+    await page.waitForTimeout(300);
     const t = await now();
     if (png.equals(await page.screenshot())) {
       moments.push({ name, t, png });

@@ -4,13 +4,15 @@
   "workspaces": {
     "": {
       "name": "chronosjs",
+      "dependencies": {
+        "typescript": "^7.0.2",
+      },
       "devDependencies": {
         "@biomejs/biome": "2.5.14",
         "@types/bun": "latest",
         "@types/react": "^19",
         "playwright": "^1.63.0",
         "react": "19.3.0",
-        "typescript": "^7.0.2",
       },
       "peerDependencies": {
         "react": ">=18",

@@ -1,9 +1,9 @@
 name: Release
 
 # Every push to main (and dev, as -dev prereleases): semantic-release reads the Conventional Commits since the last
-# tag. When they call for a release it stamps package.json, builds and packs chronosjs-X.Y.Z.tgz
-# (scripts/pack.ts), commits package.json as `ci(release): X.Y.Z [skip ci]`, tags vX.Y.Z and attaches the tarball
-# to the GitHub release. Apps install that tarball; dist/ is never committed.
+# tag. When they call for a release it stamps package.json (scripts/set-version.ts), commits it as
+# `ci(release): X.Y.Z [skip ci]`, tags vX.Y.Z and creates the GitHub release. There is no artifact: apps install the
+# tagged commit and build it themselves (README, Installing).
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: lts/*
 
-      # scripts/pack.ts (the prepare step) builds and packs with Bun.
+      # The prepare script builds dist/ on install (not needed by the release itself).
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 

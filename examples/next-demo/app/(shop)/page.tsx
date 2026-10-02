@@ -41,7 +41,8 @@ export default function ShopPage() {
                 onClick={() => {
                   add(product);
                   setToast(`${product.name} added`);
-                  setTimeout(() => setToast(undefined), 1600);
+                  // The visual comparison test keeps it up: a timer would race its screenshots.
+                  if (!holdToast()) setTimeout(() => setToast(undefined), 1600);
                 }}
               >
                 Add to cart
@@ -56,4 +57,12 @@ export default function ShopPage() {
       </div>
     </>
   );
+}
+
+function holdToast(): boolean {
+  try {
+    return sessionStorage.getItem("demo:unmask") === "1";
+  } catch {
+    return false;
+  }
 }
