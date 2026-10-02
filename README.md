@@ -12,13 +12,19 @@ Application Insights is supported first. Other services are a `Transport` away.
 
 ## Installing
 
-chronosjs installs from its GitHub release: each release has the packed library attached (`chronosjs-X.Y.Z.tgz`, built by CI). Pin a version:
+chronosjs is built from source when it is installed: nothing prebuilt is downloaded. Pin the **exact commit** of a release (`git rev-parse vX.Y.Z`) and trust the package's build step:
 
 ```sh
-bun add https://github.com/evolvedmesh/chronosjs/releases/download/v0.2.1/chronosjs-0.2.1.tgz
+bun add github:evolvedmesh/chronosjs#<commit>
 ```
 
-The lockfile pins the tarball's exact bytes; upgrading is changing the version in the URL (the [releases](https://github.com/evolvedmesh/chronosjs/releases) list them, with notes). Imports: `chronosjs` (recorder and transports, for the app being recorded), `chronosjs/player` (decoding and playing, for the app that shows replays) and `chronosjs/react` (components for both).
+```json
+{ "trustedDependencies": ["chronosjs"] }
+```
+
+Bun runs a dependency's `prepare` script only for packages in `trustedDependencies`. chronosjs's is `bun scripts/build.ts`: it compiles `src/` with the TypeScript it depends on (emit only, nothing else runs) and writes `dist/`. `bun.lock` records the commit, so a reviewer can read exactly what is built: `src/` and `scripts/build.ts` at that commit. The same works in Docker builds that install with the lockfile.
+
+Releases are tags and GitHub releases with notes (semantic-release); there is no artifact to download or verify. Imports: `chronosjs` (recorder and transports, for the app being recorded), `chronosjs/player` (decoding and playing, for the app that shows replays) and `chronosjs/react` (components for both).
 
 ## Quick start (Next.js)
 
@@ -192,7 +198,6 @@ tests/e2e/               Playwright (run by bun test): DOM fidelity fuzzing, pix
 | `bun run demo`   | Build the library, start the demo on http://localhost:3100 (replays at `/replays`)                |
 | `bun run check`  | Lint, typecheck, unit tests                                                                        |
 | `bun run e2e`    | Build everything, then run the browser tests (random DOM changes replayed exactly; the demo end to end) |
-| `bun run build`  | Build `dist/` (never committed; releases attach a packed tarball)                                  |
-| `bun run pack 1.2.3` | Build and pack `release/chronosjs-1.2.3.tgz`, as a release does                                |
+| `bun run build`  | Build `dist/` from `src/` (never committed; apps build it when they install chronosjs)             |
 
 `CHRONOS_BROWSER=firefox` (or `webkit`) runs the browser tests in another engine; all three pass. `CHRONOS_SEEDS=40 CHRONOS_ROUNDS=250 bun test --timeout 120000 tests/e2e/fidelity.test.ts` runs a longer fuzz. `CHRONOS_SHOTS=<dir>` saves screenshots of the demo test and the live, replayed and diff images of the visual test (`tests/e2e/visual.test.ts`).
