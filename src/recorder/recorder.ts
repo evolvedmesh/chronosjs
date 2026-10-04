@@ -33,7 +33,7 @@ export interface RecorderOptions {
    * deployments.
    */
   inlineStylesheets?: boolean;
-  /** Whether a response is an error worth a replay. Default: status 500 and up. */
+  /** Whether a response is an error worth a replay. Default: status 400 and up. */
   httpError?: (status: number, url: string) => boolean;
   /** Treat `console.error` as an error. Default false (frameworks log warnings there). */
   captureConsoleErrors?: boolean;
@@ -663,7 +663,7 @@ export class ChronosRecorder {
   private http(method: string, url: string, status: number, ms: number): void {
     const path = shortUrl(url);
     this.push(E.Http, method, path, status, Math.round(ms));
-    const isError = this.options.httpError ?? ((code: number) => code >= 500);
+    const isError = this.options.httpError ?? ((code: number) => code >= 400);
     if (isError(status, url)) this.error("http", `${method} ${path} failed with ${status || "a network error"}`);
   }
 
