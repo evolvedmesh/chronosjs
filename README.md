@@ -5,7 +5,7 @@ Records what a user did in a web app as a small replay file, the way a game reco
 - **Accurate:** the recorder captures the page's DOM once, then every change to it (elements, attributes, text, form values, scroll, CSS-in-JS rules inserted through the CSSOM). The player rebuilds that page in a sandboxed iframe, so the replay is the real page with its own CSS, not a video or a guess.
 - **1:1, and checked:** a test compares screenshots of the live page with the replay at the same moments, pixel by pixel. They are identical apart from a few pixels the browser draws itself (see below). That includes what the DOM doesn't hold: hover, press and focus states, and the user's dark mode or reduced motion.
 - **Small:** a 9-second checkout session with 160 events is about 3 KB compressed and fits in one Application Insights telemetry item. Mouse movement is not recorded, only where the mouse came to rest and when it set off again. The player draws the path in between.
-- **Sent on error only:** a rolling buffer (60 s by default) stays in the browser until something fails: an uncaught error, an unhandled rejection, an HTTP 5xx, an error boundary, or a call to `captureError()`.
+- **Sent on error only:** a rolling buffer (60 s by default) stays in the browser until something fails: an uncaught error, an unhandled rejection, an HTTP 4xx or 5xx, an error boundary, or a call to `captureError()`.
 - **Private by default:** typed values are masked (`****`, same length), passwords always are. Scripts and event handlers are never recorded and never run in the player.
 
 Application Insights is supported first. Other services are a `Transport` away.
@@ -78,7 +78,7 @@ appInsightsTransport({ sdk: appInsights });
 | `bufferMs`                     | `60000`                  | History kept before the error, at least. A full snapshot is taken every `bufferMs / 2` while something happens, older history is dropped. |
 | `tailMs`                       | `1500`                   | Recording kept after the error, so the replay shows how the page reacted.                                                           |
 | `maxReplays`                   | `5`                      | Replays per page load. The same error within 30 s is not sent twice.                                                                 |
-| `httpError(status, url)`       | `status >= 500`          | Which responses trigger a replay. Every fetch and XHR is recorded (method, path without query string, status, duration).            |
+| `httpError(status, url)`       | `status >= 400`          | Which responses trigger a replay. Every fetch and XHR is recorded (method, path without query string, status, duration).            |
 | `captureConsoleErrors`         | `false`                  | Treat `console.error` as an error.                                                                                                   |
 | `ignoreErrors`                 | `[]`                     | Strings or patterns: matching errors are recorded but never trigger a replay.                                                       |
 | `persist`                      | `true`                   | Keep the buffer across full page loads in the same tab (sessionStorage), so a replay can span pages.                                |
